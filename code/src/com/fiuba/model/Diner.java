@@ -1,20 +1,22 @@
 package com.fiuba.model;
 
-import java.util.concurrent.TimeUnit;
-
 import com.fiuba.utils.Logger;
+import com.fiuba.utils.Utils;
 
 public class Diner implements Runnable {
 
 	public String name;
 	private Restaurant restaurant;
 	private Table table;
-	private int timeInRestaurant;
+	private Order order;
+	private int timeToEat;
 
-	public Diner(String name, Restaurant restaurant, int timeInRestaurant) {
+	public Diner(String name, Restaurant restaurant, Order order,
+			int timeInRestaurant) {
 		this.name = name;
 		this.restaurant = restaurant;
-		this.timeInRestaurant = timeInRestaurant;
+		this.order = order;
+		this.timeToEat = timeInRestaurant;
 	}
 
 	public Table getTable() {
@@ -25,6 +27,7 @@ public class Diner implements Runnable {
 		synchronized (this) {
 			Logger.log(this + " seating in table " + table);
 			this.table = table;
+			this.table.setDiner(this);
 			notify();
 		}
 	}
@@ -41,15 +44,39 @@ public class Diner implements Runnable {
 	@Override
 	public void run() {
 		restaurant.enter(this);
-		eating();// waiter.order();
+		order();
+		eating();
+		pay();
 		restaurant.leave(this);
 	}
 
-	private void eating() {
-		try {
-			Logger.log(this + " eating " + timeInRestaurant + " secs");
-			TimeUnit.SECONDS.sleep(timeInRestaurant);
-		} catch (InterruptedException e) {
+	private void order() {
+		synchronized (this) {
+			try {
+				table.setState(TableState.WAITING_TO_ORDER);
+				this.wait();
+			} catch (InterruptedException e) {
+			}
 		}
+	}
+
+	private void eating() {
+		Logger.log(this + " eating " + timeToEat + " secs");
+		table.setState(TableState.EATING);
+		Utils.sleep(timeToEat);
+	}
+
+	private void pay() {
+		synchronized (this) {
+			try {
+				table.setState(TableState.WAITING_TO_PAY);
+				this.wait();
+			} catch (InterruptedException e) {
+			}
+		}
+	}
+
+	public Order getOrder() {
+		return order;
 	}
 }

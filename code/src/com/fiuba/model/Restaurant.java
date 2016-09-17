@@ -13,11 +13,16 @@ public class Restaurant {
 	public Queue<Diner> dinnerInDoor;
 	public Queue<Diner> dinnerInLiving;
 
+	public Queue<Order> orderToCoke;
+	public Queue<Order> availableOrder;
+
 	public Restaurant(int tables) {
 		this.tables = new ConcurrentLinkedQueue<Table>();
 		this.busyTables = new ConcurrentLinkedQueue<Table>();
 		this.dinnerInDoor = new ConcurrentLinkedQueue<Diner>();
 		this.dinnerInLiving = new ConcurrentLinkedQueue<Diner>();
+		this.orderToCoke = new ConcurrentLinkedQueue<Order>();
+		this.availableOrder = new ConcurrentLinkedQueue<Order>();
 
 		for (int i = 0; i < tables; i++) {
 			this.tables.add(new Table(i));
@@ -45,6 +50,7 @@ public class Restaurant {
 		synchronized (busyTables) {
 			Logger.log(diner + " leaving for Restaurant");
 			Table table = diner.getTable();
+			table.setState(TableState.FREE);
 			busyTables.remove(table);
 			tables.add(table);
 		}
@@ -76,6 +82,60 @@ public class Restaurant {
 	public void putFreeTable(Table table) {
 		synchronized (tables) {
 			tables.add(table);
+		}
+	}
+
+	public void putBusyTable(Table table) {
+		synchronized (busyTables) {
+			busyTables.add(table);
+		}
+	}
+
+	public Table getTableWaitingToOrder() {
+		synchronized (busyTables) {
+			for (Table table : busyTables) {
+				if (table.isWaitingToOrder()) {
+					busyTables.remove(table);
+					return table;
+				}
+			}
+		}
+		return null;
+	}
+
+	public Table getTableWaitingToPay() {
+		synchronized (busyTables) {
+			for (Table table : busyTables) {
+				if (table.isWaitingToPay()) {
+					busyTables.remove(table);
+					return table;
+				}
+			}
+		}
+		return null;
+	}
+
+	public Order getOrderToCook() {
+		synchronized (orderToCoke) {
+			return orderToCoke.poll();
+		}
+	}
+
+	public void putOrderToCook(Order order) {
+		synchronized (orderToCoke) {
+			orderToCoke.add(order);
+		}
+	}
+
+	public Order getAvailableOrder() {
+		synchronized (availableOrder) {
+			return availableOrder.poll();
+		}
+	}
+
+	public void putOrderToAvailable(Order order) {
+		synchronized (availableOrder) {
+			availableOrder.add(order);
 		}
 	}
 

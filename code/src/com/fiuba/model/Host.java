@@ -1,8 +1,8 @@
 package com.fiuba.model;
 
-import java.util.concurrent.TimeUnit;
-
+import com.fiuba.utils.Configuration;
 import com.fiuba.utils.Logger;
+import com.fiuba.utils.Utils;
 
 public class Host implements Runnable {
 
@@ -25,40 +25,51 @@ public class Host implements Runnable {
 		while (true) {
 			Table table = restaurant.getFreeTable();
 
-			// Si hay mesa vacia
-			if (table != null) {
-				// Si hay gente en el living
-				Diner dinnerInLiving = restaurant.getDinerInLiving();
-				if (dinnerInLiving != null) {
-					Logger.log(this + " attend to " + dinnerInLiving);
-					dinnerInLiving.setTable(table);
-				} else {
-					// Si hay gente en la puerta
-					Diner dinnerInDoor = restaurant.getDinerInDoor();
-					if (dinnerInDoor != null) {
-						Logger.log(this + " attend to " + dinnerInDoor);
-						dinnerInDoor.setTable(table);
-					} else {
+			if (tableIsEmpty(table)) {
+				boolean attendLiving = attendLivingDinerIfNecessary(table);
+				if (!attendLiving) {
+					boolean attendDoor = attendDoorDinerIfNecessary(table);
+					if (!attendDoor) {
 						restaurant.putFreeTable(table);
 					}
 				}
 			} else {
-				Diner dinnerInDoor = restaurant.getDinerInDoor();
-				if (dinnerInDoor != null) {
-					Logger.log(this + " attend to " + dinnerInDoor);
-					restaurant.takeToLiving(dinnerInDoor);
-				}
+				putDinerInLivingIfNecessary();
 			}
 
-			sleep();
+			Utils.sleep(Configuration.HOST_TASK_TIME);
 		}
 	}
 
-	private void sleep() {
-		try {
-			TimeUnit.SECONDS.sleep(2);
-		} catch (InterruptedException e) {
-		}
+	private boolean tableIsEmpty(Table table) {
+		return table != null;
 	}
 
+	private boolean attendLivingDinerIfNecessary(Table table) {
+		Diner dinnerInLiving = restaurant.getDinerInLiving();
+		if (dinnerInLiving != null) {
+			Logger.log(this + " attend to " + dinnerInLiving);
+			dinnerInLiving.setTable(table);
+			return true;
+		}
+		return false;
+	}
+
+	private boolean attendDoorDinerIfNecessary(Table table) {
+		Diner dinnerInDoor = restaurant.getDinerInDoor();
+		if (dinnerInDoor != null) {
+			Logger.log(this + " attend to " + dinnerInDoor);
+			dinnerInDoor.setTable(table);
+			return true;
+		}
+		return false;
+	}
+
+	private void putDinerInLivingIfNecessary() {
+		Diner dinnerInDoor = restaurant.getDinerInDoor();
+		if (dinnerInDoor != null) {
+			Logger.log(this + " attend to " + dinnerInDoor);
+			restaurant.takeToLiving(dinnerInDoor);
+		}
+	}
 }
